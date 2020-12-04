@@ -51,6 +51,10 @@ class LoadingButton @JvmOverloads constructor(
         color = Color.WHITE
     }
 
+    fun setState(buttonState: ButtonState) {
+        this.buttonState = buttonState
+    }
+
     override fun performClick(): Boolean {
         super.performClick()
         textToShow = downloadingText
