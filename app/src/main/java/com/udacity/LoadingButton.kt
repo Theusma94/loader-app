@@ -1,5 +1,7 @@
 package com.udacity
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
@@ -20,12 +22,36 @@ class LoadingButton @JvmOverloads constructor(
     private val downloadingText = "We are downloading"
     private var textToShow = downloadText
     var progress: Int = 0
-    var isRestart: Boolean = false
+    var isLoading: Boolean = false
     private var colorAnimation = ValueAnimator()
     private val rectF = RectF()
     private var rectLoading = Rect()
     private val rectText = Rect()
     private var buttonState: ButtonState by Delegates.observable<ButtonState>(ButtonState.Completed) { p, old, new ->
+        if(new is ButtonState.Loading) {
+            isLoading = true
+            textToShow = downloadingText
+            textPaint.getTextBounds(textToShow,0,textToShow.length,rectText)
+            circleX = (widthSize/2 + rectText.width()/2).toFloat()
+            circleY = (heightSize/2 - rectText.height()/2).toFloat()
+            startLoadingAnim(10000L,0,widthSize)
+        } else {
+            if(new is ButtonState.Completed) {
+                if(isLoading) {
+                    startLoadingAnim(500L,progress,widthSize)
+                } else {
+                    setupIdleState()
+                }
+            }
+        }
+    }
+
+    private fun setupIdleState() {
+        textToShow = downloadText
+        progress = 0
+        isLoading = false
+        isClickable = true
+        invalidate()
     }
 
     init {
@@ -55,52 +81,53 @@ class LoadingButton @JvmOverloads constructor(
         this.buttonState = buttonState
     }
 
-    override fun performClick(): Boolean {
-        super.performClick()
-        textToShow = downloadingText
-        textPaint.getTextBounds(textToShow,0,textToShow.length,rectText)
-        circleX = (widthSize/2 + rectText.width()/2).toFloat()
-        circleY = (heightSize/2 - rectText.height()/2).toFloat()
-        startLoadingAnim(10000L,0,widthSize)
-        return true
-    }
-
     private fun startLoadingAnim(duration: Long, start: Int, end: Int) {
         if(colorAnimation.isRunning) {
-            isRestart = true
             colorAnimation.cancel()
-            colorAnimation = ValueAnimator.ofInt(start, end)
-            colorAnimation.duration = duration
-            colorAnimation.addUpdateListener {
-                progress = it.animatedValue as Int
-                invalidate()
-            }
-            colorAnimation.start()
-        } else {
-            colorAnimation = ValueAnimator.ofInt(start, end)
-            colorAnimation.duration = duration // milliseconds
-
-            colorAnimation.addUpdateListener {
-                progress = it.animatedValue as Int
-                invalidate()
-            }
-            colorAnimation.start()
         }
+        colorAnimation = ValueAnimator.ofInt(start, end)
+        colorAnimation.duration = duration // milliseconds
+        setupAnimListener()
+        colorAnimation.start()
+
+    }
+
+    private fun setupAnimListener() {
+        colorAnimation.addUpdateListener {
+            progress = it.animatedValue as Int
+            invalidate()
+        }
+        colorAnimation.addListener(object: AnimatorListenerAdapter() {
+            override fun onAnimationStart(animation: Animator?) {
+                super.onAnimationStart(animation)
+                isClickable = false
+            }
+
+            override fun onAnimationEnd(animation: Animator?) {
+                super.onAnimationEnd(animation)
+                if(buttonState is ButtonState.Completed) {
+                    if(!isLoading || progress == widthSize) {
+                        setupIdleState()
+                    }
+                }
+            }
+        })
+
     }
 
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas?.drawColor(originalBg)
-        if(progress > 500 && !isRestart) {
-            startLoadingAnim(500L,progress,widthSize)
-        }
+
         rectLoading.set(0, heightSize, progress, 0)
         canvas?.drawRect(rectLoading, loadingPaint)
 
         canvas?.drawText(textToShow, (widthSize / 2).toFloat(), (heightSize / 2) - ((textPaint.descent() + textPaint.ascent()) / 2), textPaint)
-        rectF.set(circleX,circleY,circleX+80,circleY+80)
-        canvas?.drawArc(rectF,0F,calculateAngle(),true, circlePaint)
+        if(isLoading) {
+            rectF.set(circleX,circleY,circleX+80,circleY+80)
+            canvas?.drawArc(rectF,0F,calculateAngle(),true, circlePaint)
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
