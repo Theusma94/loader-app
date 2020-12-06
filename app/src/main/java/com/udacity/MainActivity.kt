@@ -1,6 +1,7 @@
 package com.udacity
 
 import android.app.DownloadManager
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -8,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.database.Cursor
+import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.RadioButton
@@ -23,6 +26,7 @@ class MainActivity : AppCompatActivity() {
 
     private var downloadID: Long = 0
     private var optionChecked: Int = -1
+    private var titleChecked = ""
     private val downloadOptions: Map<Int,String> = mapOf(
             0 to GLIDE,
             1 to UDACITY,
@@ -40,10 +44,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        createNotificationChannel()
+
         registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
         radio_group_download.setOnCheckedChangeListener { group, checkedId ->
             val radioButtonID: Int = checkedId
             val radioButton: RadioButton = group.findViewById(radioButtonID)
+            titleChecked = radioButton.text.toString()
             val indexOfChecked: Int = group.indexOfChild(radioButton)
 
             optionChecked = indexOfChecked
@@ -58,6 +65,53 @@ class MainActivity : AppCompatActivity() {
             }
         }
         downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationChannel = NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+            )
+
+            notificationChannel.enableVibration(true)
+            notificationChannel.description = "Repository download status"
+
+            notificationManager = getSystemService(
+                    NotificationManager::class.java
+            ) as NotificationManager
+            notificationManager.createNotificationChannel(notificationChannel)
+        }
+    }
+
+    private fun sendNotification(isSuccess: Boolean) {
+        val bundle = Bundle().apply {
+            putString(TITLE_KEY,titleChecked)
+            putBoolean(STATUS_KEY,isSuccess)
+        }
+        val contentIntent = Intent(applicationContext, DetailActivity::class.java)
+        contentIntent.putExtra(BUNDLE_KEY,bundle)
+
+        val contentPendingIntent = PendingIntent.getActivity(
+                applicationContext,
+                0,
+                contentIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(
+                this,
+                CHANNEL_ID
+        ).apply {
+            setSmallIcon(R.drawable.ic_assistant_black_24dp)
+            setContentTitle("Udacity: Android Kotlin Nanodegree")
+            setContentText("The Project 3 repository is downloaded")
+            setContentIntent(contentPendingIntent)
+            priority = NotificationCompat.PRIORITY_HIGH
+        }
+
+        notificationManager.notify(0,builder.build())
     }
 
     private val receiver = object : BroadcastReceiver() {
@@ -75,11 +129,13 @@ class MainActivity : AppCompatActivity() {
                         Log.d("MainActivity","Successfully")
                         cursor.close()
                         custom_button.setState(ButtonState.Completed)
+                        sendNotification(true)
                     }
                     DownloadManager.STATUS_FAILED -> {
                         Log.d("MainActivity","Failed")
                         cursor.close()
                         custom_button.setState(ButtonState.Completed)
+                        sendNotification(false)
                     }
                 }
             }
@@ -107,6 +163,10 @@ class MainActivity : AppCompatActivity() {
         private const val GLIDE =
                 "https://github.com/bumptech/glide/archive/master.zip"
         private const val CHANNEL_ID = "channelId"
+        private const val CHANNEL_NAME = "channelName"
+        const val TITLE_KEY = "title"
+        const val STATUS_KEY = "status"
+        const val BUNDLE_KEY = "bundle_key"
     }
 
 }
