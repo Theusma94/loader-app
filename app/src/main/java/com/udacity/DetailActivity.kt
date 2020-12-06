@@ -1,6 +1,8 @@
 package com.udacity
 
+import android.content.Intent
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_detail.*
@@ -24,6 +26,12 @@ class DetailActivity : AppCompatActivity() {
                     status_text.setTextColor(ContextCompat.getColor(this@DetailActivity,android.R.color.holo_red_dark))
                 }
             }
+        }
+
+        button_finalize_detail.setOnClickListener {
+            val intent = Intent(this,MainActivity::class.java)
+            startActivity(intent)
+            finish()
         }
 
     }
