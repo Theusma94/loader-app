@@ -6,6 +6,10 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="loading_button_idle_background">@color/colorPrimary</item>
+        <item name="loading_button_background">@color/colorPrimaryDark</item>
+        <item name="loading_circle_color">@color/colorAccent</item>
+        <item name="loading_button_text">@android:color/white</item>
     </style>
 
     <style name="AppTheme.NoActionBar">
